@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ATIC - Anugrah Teknik Informatika Coin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --bg-color: #f8f9fa;
+            --card-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+
+        body { 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* NAVBAR */
+        .navbar { background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.04); padding: 1rem 0; }
+        .brand-logo { font-weight: 800; letter-spacing: -0.5px; color: var(--primary-color); }
+        .brand-sub { font-size: 0.7rem; color: var(--secondary-color); font-weight: 400; letter-spacing: 1px; }
+
+        /* CARDS */
+        .card { border: none; border-radius: 16px; box-shadow: var(--card-shadow); transition: transform 0.3s ease; background: white; overflow: hidden; }
+        .card:hover { transform: translateY(-3px); }
+        .card-header { background: white; border-bottom: 1px solid #f0f0f0; padding: 1.2rem; font-weight: 700; color: #333; }
+        
+        /* VISUALISASI CAIRAN (LIQUID BLOCK) */
+        .chain-wrapper { overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
+        .chain-container { display: flex; gap: 15px; width: max-content; }
+        .liquid-block {
+            min-width: 150px; height: 160px;
+            border: 1px solid #eef2f6; border-radius: 12px;
+            position: relative; background: #fff; overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        }
+        .liquid-fill {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(180deg, rgba(13,110,253,0.4) 0%, rgba(13,110,253,0.9) 100%);
+            z-index: 1; transition: height 1s ease; border-top: 2px solid rgba(255,255,255,0.6);
+        }
+        .block-content { position: relative; z-index: 2; padding: 12px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        /* ANIMASI MINING */
+        .mining-animation-area {
+            background: #1a1d21; border-radius: 12px; padding: 20px;
+            color: #00ff88; font-family: 'Roboto Mono', monospace;
+            text-align: center; display: none; position: relative; overflow: hidden;
+        }
+        .pickaxe-icon { font-size: 3rem; color: #ffc107; display: inline-block; }
+        .digging { animation: dig 0.6s infinite alternate ease-in-out; }
+        @keyframes dig { 0% { transform: rotate(0deg); } 100% { transform: rotate(-45deg); } }
+
+        /* TABEL RIWAYAT (Custom Scrollbar) */
+        .history-scroll::-webkit-scrollbar { width: 8px; }
+        .history-scroll::-webkit-scrollbar-thumb { background-color: #dee2e6; border-radius: 4px; }
+        .history-scroll::-webkit-scrollbar-track { background-color: #f1f1f1; }
+
+        /* FOOTER */
+        footer { background: #fff; border-top: 1px solid #eaeaea; margin-top: auto; }
+        .social-btn { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #f8f9fa; color: #333; transition: 0.3s; margin: 0 5px; text-decoration: none;}
+        .social-btn:hover { background: var(--primary-color); color: white; }
+
+        /* INPUTS */
+        .form-control:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(13,110,253,0.15); }
+        
+        /* Utility */
+        .text-mono { font-family: 'Roboto Mono', monospace; }
+        .cursor-pointer { cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="modal fade" id="keyModal" data-bs-backdrop="static" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-warning border-0">
+        <h5 class="modal-title fw-bold text-dark"><i class="fas fa-shield-alt me-2"></i>KUNCI RAHASIA BARU</h5>
+      </div>
+      <div class="modal-body p-4 bg-white">
+        <div class="alert alert-danger d-flex align-items-center mb-3">
+            <i class="fas fa-exclamation-circle fs-4 me-3"></i>
+            <div class="small lh-sm">
+                <strong>SANGAT RAHASIA!</strong><br>
+                Simpan Private Key ini sekarang. Jika hilang, saldo ATIC Anda tidak bisa dikembalikan.
+            </div>
+        </div>
+        
+        <label class="small fw-bold text-muted mb-1">PRIVATE KEY (Salin Ini):</label>
+        <div class="input-group mb-3">
+            <input type="text" id="modal-priv" class="form-control text-mono bg-light" readonly>
+            <button class="btn btn-dark" onclick="copyText('modal-priv')"><i class="fas fa-copy"></i></button>
+        </div>
+        
+        <label class="small fw-bold text-muted mb-1">PUBLIC KEY (Alamat Anda):</label>
+        <input type="text" id="modal-pub" class="form-control text-mono bg-light form-control-sm" readonly>
+      </div>
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-primary w-100 fw-bold" data-bs-dismiss="modal">SAYA SUDAH SIMPAN AMAN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2 text-primary">
+                <i class="fas fa-network-wired"></i>
+            </div>
+            <div class="lh-1">
+                <div class="brand-logo">ATIC NETWORK</div>
+                <div class="brand-sub">TEKNIK INFORMATIKA COIN</div>
+            </div>
+        </a>
+        
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-none d-md-block text-end">
+                <small class="text-muted d-block" style="font-size: 10px;">STATUS NODE</small>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success"><i class="fas fa-wifi me-1"></i> TERHUBUNG</span>
+            </div>
+            <button onclick="resetData()" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold">
+                <i class="fas fa-sign-out-alt me-1"></i> KELUAR
+            </button>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card p-3 h-100 border-start border-4 border-primary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase text-muted small fw-bold mb-1">Total Blok</div>
+                        <h2 class="mb-0 fw-bold text-dark" id="block-height">0</h2>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary"><i class="fas fa-cubes fa-lg"></i></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-12 col-md-4">
+            <div class="card p-3 h-100 border-start border-4 border-info">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="w-100">
+                        <div class="text-uppercase text-muted small fw-bold mb-2">Statistik Supply</div>
+                        
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-secondary">Total Supply:</span>
+                            <span class="small fw-bold">11,500,000</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-secondary">Beredar:</span>
+                            <span class="small fw-bold text-success" id="supply-circulating">0</span>
+                        </div>
+                        <div class="border-top my-1"></div>
+                        <div class="d-flex justify-content-between">
+                            <span class="small text-secondary">Tersisa:</span>
+                            <span class="small fw-bold text-primary" id="supply-left">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card p-3 h-100 border-start border-4 border-success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase text-muted small fw-bold mb-1">Miner Aktif</div>
+                        <h2 class="mb-0 fw-bold text-dark" id="peers-count">0</h2>
+                        <small class="text-success"><i class="fas fa-check-circle"></i> Online</small>
+                    </div>
+                    <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success"><i class="fas fa-users fa-lg"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+            <h6 class="fw-bold text-secondary m-0"><i class="fas fa-stream me-2"></i>LIVE BLOCKCHAIN</h6>
+            <span class="badge bg-secondary">Realtime</span>
+        </div>
+        <div class="chain-wrapper">
+            <div class="chain-container" id="visual-chain">
+                <div class="text-center w-100 py-4 text-muted fst-italic">Menunggu sinkronisasi data...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        
+        <div class="col-lg-7">
+            
+            <div class="card" id="card-setup">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4 text-primary opacity-50"><i class="fas fa-wallet fa-6x"></i></div>
+                    <h3 class="fw-bold text-dark">Selamat Datang di ATIC</h3>
+                    <p class="text-muted mb-4">Mulai menambang dan bertransaksi dengan membuat dompet digital.</p>
+                    
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <button onclick="buatDompet()" class="btn btn-primary w-100 py-3 fw-bold shadow-sm mb-3">
+                                <i class="fas fa-plus-circle me-2"></i>BUAT DOMPET BARU
+                            </button>
+                            
+                            <div class="input-group">
+                                <input type="text" id="login-addr" class="form-control" placeholder="Tempel Public Key lama disini...">
+                                <button class="btn btn-outline-secondary px-4" onclick="loginManual()">MASUK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="card-mining" style="display:none;">
+                
+                <div class="card bg-primary text-white mb-4" style="background: linear-gradient(135deg, #0d6efd 0%, #0043a8 100%);">
+                    <div class="card-body p-4 position-relative overflow-hidden">
+                        <i class="fas fa-coins position-absolute" style="right: -20px; bottom: -20px; font-size: 8rem; opacity: 0.1;"></i>
+                        <small class="opacity-75 fw-bold text-uppercase">Saldo Dompet Saya</small>
+                        <h1 class="display-4 fw-bold mb-2"><span id="my-balance">0</span> <span class="fs-4">ATIC</span></h1>
+                        
+                        <div class="mt-3">
+                            <label class="small opacity-75 mb-1">Alamat Public Key (Klik untuk Salin):</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white bg-opacity-10 border-0 text-white"><i class="fas fa-key"></i></span>
+                                <input type="text" id="my-addr" class="form-control bg-white bg-opacity-25 border-0 text-white text-mono" readonly>
+                                <button class="btn btn-light bg-opacity-25 border-0 text-white" onclick="copyText('my-addr')"><i class="fas fa-copy"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-hammer me-2 text-warning"></i>AREA PERTAMBANGAN</span>
+                        <span class="badge bg-light text-dark border">CPU MINER</span>
+                    </div>
+                    <div class="card-body text-center p-4">
+                        
+                        <div id="btn-area">
+                            <p class="text-muted mb-4">Tekan tombol di bawah untuk mining dan klaim reward.</p>
+                            
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <button onclick="mulaiMiningManual()" class="btn btn-outline-primary w-100 py-3 fw-bold h-100">
+                                        <i class="fas fa-hand-pointer me-1"></i> TAMBANG MANUAL
+                                        <div class="small fw-normal mt-1" style="font-size: 0.7rem;">Gali 1 Blok lalu berhenti</div>
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button onclick="toggleAutoMining()" class="btn btn-primary w-100 py-3 fw-bold h-100 shadow-sm">
+                                        <i class="fas fa-robot me-1"></i> TAMBANG OTOMATIS
+                                        <div class="small fw-normal mt-1 text-white-50" style="font-size: 0.7rem;">Gali terus menerus (Loop)</div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="anim-area" class="mining-animation-area mt-0">
+                            <div class="mb-3">
+                                <i class="fas fa-hammer pickaxe-icon digging"></i>
+                            </div>
+                            <h5 class="fw-bold text-white mb-1">SEDANG MENAMBANG...</h5>
+                            <p class="small text-white-50 mb-3" id="mining-status-text">Mencari blok valid di jaringan...</p>
+                            
+                            <div class="progress mb-3" style="height: 6px; background: rgba(255,255,255,0.1);">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 100%"></div>
+                            </div>
+
+                            <button onclick="stopMining()" class="btn btn-danger btn-sm px-4 rounded-pill">
+                                <i class="fas fa-stop-circle me-1"></i> BERHENTI
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+                        <span class="fw-bold"><i class="fas fa-history me-2 text-primary"></i>RIWAYAT TRANSAKSI TERBARU</span>
+                        <span class="badge bg-secondary">Realtime Data</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="history-scroll" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-hover table-striped mb-0 align-middle" style="font-size: 0.9rem;">
+                                <thead class="table-light sticky-top" style="z-index: 10;">
+                                    <tr>
+                                        <th class="ps-4 py-3" style="width: 60px;">Tipe</th> 
+                                        <th>Detail Transaksi</th>
+                                        <th class="text-end pe-4">Nominal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tx-table">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            
+            <div class="card mb-4">
+                <div class="card-header"><i class="fas fa-paper-plane me-2 text-primary"></i>KIRIM KOIN</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">Alamat Penerima</label>
+                        <input type="text" id="tx-dest" class="form-control text-mono" placeholder="Tempel Public Key tujuan...">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">Jumlah ATIC</label>
+                        <div class="input-group">
+                            <input type="number" id="tx-amount" class="form-control" placeholder="0" min="1" oninput="validity.valid||(value='');">
+                            <span class="input-group-text fw-bold bg-light">ATIC</span>
+                        </div>
+                        <div class="form-text small">Minimal transfer 1 ATIC.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-danger">Private Key (Tanda Tangan)</label>
+                        <input type="password" id="tx-priv" class="form-control border-danger bg-danger bg-opacity-10" placeholder="Tempel Private Key Anda...">
+                    </div>
+
+                    <button onclick="kirimKoin()" class="btn btn-primary w-100 fw-bold py-2">KONFIRMASI KIRIM</button>
+                </div>
+            </div>
+
+            <div class="card bg-light border-0 mb-4">
+                <div class="card-body">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-search me-2"></i>CEK DOMPET PUBLIK</h6>
+                    <div class="input-group mb-2">
+                        <input type="text" id="search-addr" class="form-control" placeholder="Masukkan Public Key...">
+                        <button onclick="cekSaldoOrang()" class="btn btn-dark"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                    
+                    <div id="search-result" class="bg-white p-3 rounded border text-center" style="display:none;">
+                        <small class="text-muted d-block">Total Saldo Ditemukan</small>
+                        <h3 class="text-success fw-bold m-0"><span id="search-balance">0</span> ATIC</h3>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<footer class="bg-white mt-5 py-5 border-top">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-5 mb-4 mb-lg-0">
+                <a href="#" class="d-flex align-items-center text-decoration-none text-dark mb-3">
+                    <div class="bg-primary text-white p-2 rounded me-2"><i class="fas fa-network-wired"></i></div>
+                    <h5 class="fw-bold m-0 text-primary">ATIC NETWORK</h5>
+                </a>
+                <p class="text-muted small">
+                    Anugrah Teknik Informatika Coin (ATIC) adalah proyek mata uang digital berbasis Blockchain Peer-to-Peer yang dikembangkan sebagai media pembelajaran teknologi desentralisasi di lingkungan Universitas Medan Area.
+                </p>
+                <div class="d-flex gap-2 mt-4">
+                    <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-btn"><i class="fab fa-youtube"></i></a>
+                    <a href="#" class="social-btn"><i class="fab fa-tiktok"></i></a>
+                    <a href="#" class="social-btn"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-6">
+                <h6 class="fw-bold mb-3">Tentang</h6>
+                <ul class="list-unstyled text-muted small d-flex flex-column gap-2">
+                    <li><a href="#" class="text-decoration-none text-muted">Visi & Misi</a></li>
+                    <li><a href="#" class="text-decoration-none text-muted">Teknologi</a></li>
+                    <li><a href="#" class="text-decoration-none text-muted">Roadmap</a></li>
+                </ul>
+            </div>
+            
+            <div class="col-lg-4 col-6">
+                <h6 class="fw-bold mb-3">Lokasi & Kontak</h6>
+                <p class="text-muted small mb-1">
+                    <i class="fas fa-map-marker-alt me-2"></i>Fakultas Teknik, Universitas Medan Area<br>
+                    Medan, Sumatera Utara, Indonesia
+                </p>
+                <p class="text-muted small">
+                    <i class="fas fa-envelope me-2"></i>developer@atic.ac.id
+                </p>
+                <div class="alert alert-light border mt-3 p-2 small text-center">
+                    <strong>Moto:</strong> "Inovasi Tanpa Batas, Koneksi Tanpa Henti."
+                </div>
+            </div>
+        </div>
+        <div class="text-center pt-4 mt-4 border-top text-muted small">
+            &copy; 2025 ATIC Network Project. All rights reserved.
+        </div>
+    </div>
+</footer>
+
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex"><div class="toast-body fw-bold"><i class="fas fa-check-circle me-2"></i> <span id="toast-msg">Sukses!</span></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let isAutoMining = false;
+    let isManualMining = false;
+    const TOTAL_SUPPLY_CAP = 11500000; 
+
+    $(document).ready(function(){
+        let savedAddr = localStorage.getItem('atic_addr');
+        if(savedAddr) { setupView(savedAddr); }
+        updateData(); setInterval(updateData, 3000);
+    });
+
+    // --- DOMPET ---
+    function buatDompet() {
+        $.get('/api/buat_dompet', function(res) {
+            localStorage.setItem('atic_addr', res.pub);
+            $('#modal-pub').val(res.pub);
+            $('#modal-priv').val(res.priv);
+            new bootstrap.Modal(document.getElementById('keyModal')).show();
+            setupView(res.pub);
+        });
+    }
+
+    function loginManual() {
+        let addr = $('#login-addr').val();
+        if(addr.length > 20) {
+            localStorage.setItem('atic_addr', addr);
+            setupView(addr);
+        } else { alert("Format alamat tidak valid!"); }
+    }
+
+    function resetData() {
+        if(confirm("Yakin ingin keluar? Pastikan kunci sudah disimpan.")) {
+            localStorage.removeItem('atic_addr');
+            location.reload();
+        }
+    }
+
+    function setupView(addr) {
+        $('#card-setup').hide(); 
+        $('#card-mining').fadeIn();
+        $('#my-addr').val(addr); 
+        updateBalance();
+    }
+
+    function copyText(id) {
+        let el = document.getElementById(id);
+        el.select(); document.execCommand("copy");
+        toast("Berhasil disalin!");
+    }
+    
+    function copyString(text) {
+        navigator.clipboard.writeText(text);
+        toast("Alamat disalin!");
+    }
+
+    // --- MINING (MANUAL & OTOMATIS) ---
+    function showMiningAnim(isAuto) {
+        $('#btn-area').hide();
+        $('#anim-area').fadeIn();
+        let text = isAuto ? "Menjalankan Penambang Otomatis..." : "Menjalankan Penambang Manual (1x)...";
+        $('#mining-status-text').text(text);
+    }
+
+    function hideMiningAnim() {
+        $('#anim-area').hide();
+        $('#btn-area').fadeIn();
+        isAutoMining = false;
+        isManualMining = false;
+    }
+
+    function toggleAutoMining() {
+        if (!isAutoMining) {
+            isAutoMining = true;
+            isManualMining = false;
+            showMiningAnim(true);
+            runMiningLoop();
+        }
+    }
+
+    function mulaiMiningManual() {
+        if (!isManualMining && !isAutoMining) {
+            isManualMining = true;
+            showMiningAnim(false);
+            runMiningLoop();
+        }
+    }
+
+    function stopMining() {
+        isAutoMining = false;
+        isManualMining = false;
+        hideMiningAnim();
+    }
+
+    function runMiningLoop() {
+        if (!isAutoMining && !isManualMining) return;
+        let addr = $('#my-addr').val();
+        
+        $.ajax({
+            url: '/api/gali', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify({ alamat: addr }),
+            success: function(res) {
+                if (!isAutoMining && !isManualMining) return;
+                toast(`BLOK #${res.blok.index} DITEMUKAN! (+${res.hadiah} ATIC)`);
+                updateData(); updateBalance();
+
+                if(isAutoMining) { setTimeout(runMiningLoop, 1000); } 
+                else { hideMiningAnim(); }
+            },
+            error: function() { 
+                if(isAutoMining) setTimeout(runMiningLoop, 3000); 
+                else hideMiningAnim();
+            }
+        });
+    }
+
+    // --- TRANSFER & CEK ---
+    function kirimKoin() {
+        let dest = $('#tx-dest').val();
+        let amount = $('#tx-amount').val();
+        let priv = $('#tx-priv').val();
+        if(!dest || !amount || !priv) { alert("Lengkapi semua data!"); return; }
+        
+        $.ajax({
+            url: '/api/kirim', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify({ penerima: dest, jumlah: amount, priv_key: priv }),
+            success: function(res) {
+                toast("Berhasil dikirim!"); $('#tx-amount').val(''); updateBalance();
+            },
+            error: function(err) { alert("GAGAL: " + err.responseJSON.pesan); }
+        });
+    }
+
+    function cekSaldoOrang() {
+        let addr = $('#search-addr').val();
+        if(!addr) return;
+        $.get('/api/cek_saldo/' + addr, function(res) {
+            $('#search-result').fadeIn(); $('#search-balance').text(res.saldo);
+        });
+    }
+
+    // --- UPDATE DASHBOARD ---
+    function updateData() {
+        $.get('/api/info_chain', function(res) {
+            $('#block-height').text(res.panjang); 
+            $('#peers-count').text(res.peers);
+            
+            let sirkulasi = 11500000 - res.sisa_supply;
+            $('#supply-circulating').text(sirkulasi.toLocaleString());
+            $('#supply-left').text(res.sisa_supply.toLocaleString());
+
+            // Render Visualisasi Cair
+            let blockHtml = "";
+            res.chain.slice().reverse().slice(0, 10).forEach(block => {
+                let reward = block.hadiah || 0;
+                let txCount = block.transaksi.length;
+                let miner = "System";
+                if(txCount > 0 && block.transaksi[0].pengirim === "SISTEM_PENCETAK_UANG") {
+                    miner = block.transaksi[0].penerima.substring(0, 10) + "...";
+                }
+                
+                let waterHeight = 30 + (txCount * 10);
+                if(waterHeight > 100) waterHeight = 100;
+
+                blockHtml += `
+                <div class="liquid-block" title="Miner: ${miner}">
+                    <div class="block-content">
+                        <div class="block-num">#${block.index}</div>
+                        <div class="text-center my-2">
+                            <div class="miner-tag text-secondary"><i class="fas fa-user-circle me-1"></i>${miner}</div>
+                        </div>
+                        <div class="text-primary fw-bold text-center">+${reward} ATIC</div>
+                    </div>
+                    <div class="liquid-fill" style="height: ${waterHeight}%"></div>
+                </div>`;
+            });
+            $('#visual-chain').html(blockHtml);
+
+            // Render Riwayat (FULL & DETAIL)
+            let txHtml = "";
+            let allTx = [];
+            res.chain.forEach(b => { b.transaksi.forEach(t => allTx.push(t)); });
+            
+            allTx.reverse().forEach(tx => {
+                let icon = tx.pengirim === "SISTEM_PENCETAK_UANG" ? 
+                    '<span class="badge bg-warning text-dark p-2"><i class="fas fa-gift"></i> REWARD</span>' : 
+                    '<span class="badge bg-primary p-2"><i class="fas fa-exchange-alt"></i> KIRIM</span>';
+                
+                let sender = tx.pengirim === "SISTEM_PENCETAK_UANG" ? "SISTEM PENCETAK UANG (MINING)" : tx.pengirim.substring(0, 30)+"...";
+                let receiver = tx.penerima.substring(0, 30)+"...";
+                let colorClass = tx.pengirim === "SISTEM_PENCETAK_UANG" ? "text-success" : "text-dark";
+
+                txHtml += `
+                <tr>
+                    <td class="ps-4">${icon}</td>
+                    <td>
+                        <div class="mb-1">
+                            <span class="text-muted small me-1">Dari:</span> 
+                            <span class="addr-text cursor-pointer fw-bold text-secondary text-mono" onclick="copyString('${tx.pengirim}')">${sender}</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small me-1">Ke: &nbsp;&nbsp;</span> 
+                            <span class="addr-text cursor-pointer fw-bold text-secondary text-mono" onclick="copyString('${tx.penerima}')">${receiver}</span>
+                        </div>
+                    </td>
+                    <td class="text-end pe-4">
+                        <span class="fs-5 fw-bold ${colorClass}">${tx.jumlah} ATIC</span>
+                    </td>
+                </tr>`;
+            });
+            $('#tx-table').html(txHtml);
+
+        }).fail(() => { 
+            $('.badge').removeClass('bg-success').addClass('bg-danger').text('OFFLINE'); 
+        });
+        
+        if($('#my-addr').val()) updateBalance();
+    }
+    
+    function updateBalance() {
+        $.get('/api/cek_saldo/' + $('#my-addr').val(), function(res) { $('#my-balance').text(res.saldo); });
+    }
+    function toast(msg) {
+        $('#toast-msg').text(msg); new bootstrap.Toast(document.getElementById('liveToast')).show();
+    }
+</script>
+</body>
+</html>
